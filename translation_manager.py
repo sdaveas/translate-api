@@ -159,11 +159,20 @@ class TranslationManager:
         for model_name in route['models']:
             if use_pipeline:
                 translator = self._get_pipeline(model_name)
-                result = translator(current_text, max_length=512)
+                # Add generation parameters to prevent repetition
+                result = translator(
+                    current_text, 
+                    max_length=512,
+                    num_beams=4,
+                    early_stopping=True,
+                    no_repeat_ngram_size=3,
+                    length_penalty=2.0,
+                    temperature=1.0
+                )
                 current_text = result[0]['translation_text']
             else:
                 tokenizer, model = self._get_model_and_tokenizer(model_name)
-                inputs = tokenizer(current_text, return_tensors="pt", padding=True, max_length=512)
+                inputs = tokenizer(current_text, return_tensors="pt", padding=True, max_length=512, truncation=True)
                 
                 # Move inputs to device
                 if self.device == "cuda":
@@ -171,7 +180,17 @@ class TranslationManager:
                 elif self.device == "mps":
                     inputs = {k: v.to("mps") for k, v in inputs.items()}
                 
-                outputs = model.generate(**inputs, max_length=512)
+                # Generate with parameters to prevent repetition
+                outputs = model.generate(
+                    **inputs,
+                    max_length=512,
+                    num_beams=4,
+                    early_stopping=True,
+                    no_repeat_ngram_size=3,
+                    length_penalty=2.0,
+                    temperature=1.0,
+                    do_sample=False
+                )
                 current_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
             
             logger.info(f"After {model_name}: {current_text[:100]}...")
