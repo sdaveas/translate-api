@@ -12,8 +12,7 @@ http://localhost:8080
 | GET | `/` | API information |
 | GET | `/health` | Health check |
 | GET | `/languages` | Available languages and routes |
-| POST | `/translate` | Translate single text |
-| POST | `/translate/batch` | Translate multiple texts |
+| POST | `/translate` | Translate text |
 | DELETE | `/cache` | Clear model cache |
 
 ## Detailed Request & Response Examples
@@ -37,7 +36,6 @@ curl http://localhost:8080/
     "/health": "Health check",
     "/languages": "Get available languages and routes",
     "/translate": "Translate text (POST)",
-    "/translate/batch": "Translate multiple texts (POST)",
     "/cache": "Clear model cache (DELETE)"
   }
 }
@@ -203,91 +201,7 @@ curl -X POST http://localhost:8080/translate \
 }
 ```
 
-### 5. Batch Translation
-
-Translate multiple texts in a single request.
-
-**Request:**
-```bash
-curl -X POST http://localhost:8080/translate/batch \
-  -H "Content-Type: application/json" \
-  -d '{
-    "from": "en",
-    "to": "zh",
-    "texts": [
-      "Good morning",
-      "How are you?",
-      "Thank you very much",
-      "Goodbye"
-    ]
-  }'
-```
-
-**Response:**
-```json
-{
-  "translations": [
-    {
-      "original_text": "Good morning",
-      "translated_text": "早上好"
-    },
-    {
-      "original_text": "How are you?",
-      "translated_text": "你好吗?"
-    },
-    {
-      "original_text": "Thank you very much",
-      "translated_text": "非常感谢你"
-    },
-    {
-      "original_text": "Goodbye",
-      "translated_text": "再见"
-    }
-  ],
-  "from": "en",
-  "to": "zh"
-}
-```
-
-**Batch Translation with Chain Translation:**
-```bash
-curl -X POST http://localhost:8080/translate/batch \
-  -H "Content-Type: application/json" \
-  -d '{
-    "from": "zh",
-    "to": "el",
-    "texts": [
-      "你好",
-      "谢谢",
-      "再见"
-    ]
-  }'
-```
-
-**Response:**
-```json
-{
-  "translations": [
-    {
-      "original_text": "你好",
-      "translated_text": "Γεια σου"
-    },
-    {
-      "original_text": "谢谢",
-      "translated_text": "Ευχαριστώ"
-    },
-    {
-      "original_text": "再见",
-      "translated_text": "Αντίο"
-    }
-  ],
-  "from": "zh",
-  "to": "el",
-  "translation_path": ["Chinese", "English", "Greek"]
-}
-```
-
-### 6. Clear Model Cache
+### 5. Clear Model Cache
 
 Clear all cached models to free memory.
 
@@ -403,13 +317,6 @@ If translation fails due to model issues or other internal errors:
 | `to` | string | Yes | Target language code (`zh`, `en`, or `el`) |
 | `text` | string | Yes | Text to translate |
 
-### /translate/batch Endpoint
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `from` | string | Yes | Source language code (`zh`, `en`, or `el`) |
-| `to` | string | Yes | Target language code (`zh`, `en`, or `el`) |
-| `texts` | array | Yes | Array of strings to translate |
 
 ## Language Codes
 
@@ -464,18 +371,6 @@ class TranslationClient:
         )
         return response.json()
     
-    def translate_batch(self, texts, from_lang, to_lang):
-        """Translate multiple texts."""
-        response = requests.post(
-            f"{self.base_url}/translate/batch",
-            json={
-                "from": from_lang,
-                "to": to_lang,
-                "texts": texts
-            }
-        )
-        return response.json()
-    
     def get_languages(self):
         """Get available languages and routes."""
         response = requests.get(f"{self.base_url}/languages")
@@ -498,13 +393,10 @@ client = TranslationClient()
 result = client.translate("Hello world", "en", "zh")
 print(f"Translation: {result['translated_text']}")
 
-# Batch translation
-results = client.translate_batch(
-    ["Good morning", "Thank you", "Goodbye"],
-    "en", "el"
-)
-for item in results['translations']:
-    print(f"{item['original_text']} → {item['translated_text']}")
+# Multiple translations
+for text in ["Good morning", "Thank you", "Goodbye"]:
+    result = client.translate(text, "en", "el")
+    print(f"{text} → {result['translated_text']}")
 ```
 
 ## cURL Examples for Common Use Cases
@@ -538,17 +430,11 @@ curl -X POST http://localhost:8080/translate \
 ### Translate common phrases for travel
 
 ```bash
-curl -X POST http://localhost:8080/translate/batch \
-  -H "Content-Type: application/json" \
-  -d '{
-    "from": "en",
-    "to": "el",
-    "texts": [
-      "Where is the bathroom?",
-      "How much does this cost?",
-      "Can you help me?",
-      "I do not understand",
-      "Thank you very much"
-    ]
-  }'
+# Using a loop to translate multiple phrases
+for phrase in "Where is the bathroom?" "How much does this cost?" "Can you help me?"; do
+  curl -X POST http://localhost:8080/translate \
+    -H "Content-Type: application/json" \
+    -d "{\"from\": \"en\", \"to\": \"el\", \"text\": \"$phrase\"}"
+  echo
+done
 ```

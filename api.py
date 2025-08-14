@@ -42,7 +42,6 @@ def index():
             "/health": "Health check",
             "/languages": "Get available languages and routes",
             "/translate": "Translate text (POST)",
-            "/translate/batch": "Translate multiple texts (POST)",
             "/cache": "Clear model cache (DELETE)"
         }
     })
@@ -153,98 +152,6 @@ def translate():
         logger.error(f"Translation error: {str(e)}")
         return jsonify({"error": f"Translation failed: {str(e)}"}), 500
 
-
-@app.route('/translate/batch', methods=['POST'])
-def translate_batch():
-    """
-    Translate multiple texts at once.
-    
-    Expected JSON payload:
-    {
-        "from": "en",
-        "to": "zh",
-        "texts": ["Hello", "World", "Friend"]
-    }
-    """
-    # Get JSON data
-    data = request.get_json()
-    if not data:
-        return jsonify({"error": "No JSON data provided"}), 400
-    
-    # Validate required fields
-    from_lang = data.get('from')
-    to_lang = data.get('to')
-    texts = data.get('texts')
-    
-    if not from_lang:
-        return jsonify({"error": "Missing 'from' language"}), 400
-    if not to_lang:
-        return jsonify({"error": "Missing 'to' language"}), 400
-    if not texts:
-        return jsonify({"error": "Missing 'texts' to translate"}), 400
-    if not isinstance(texts, list):
-        return jsonify({"error": "'texts' must be a list"}), 400
-    
-    # Validate language codes
-    valid_langs = ["zh", "en", "el"]
-    if from_lang not in valid_langs:
-        return jsonify({
-            "error": f"Invalid source language: {from_lang}",
-            "valid_languages": valid_langs
-        }), 400
-    if to_lang not in valid_langs:
-        return jsonify({
-            "error": f"Invalid target language: {to_lang}",
-            "valid_languages": valid_langs
-        }), 400
-    if from_lang == to_lang:
-        return jsonify({"error": "Source and target languages are the same"}), 400
-    
-    try:
-        manager = get_translation_manager()
-        
-        # Check if route exists
-        route = manager.get_translation_route(from_lang, to_lang)
-        if not route:
-            return jsonify({
-                "error": f"No translation route available from {from_lang} to {to_lang}"
-            }), 400
-        
-        # Build translation path if it's a chain translation
-        translation_path = None
-        if len(route["path"]) > 1:
-            path_names = []
-            for step in route["path"]:
-                parts = step.split("-")
-                path_names.append(manager.config["language_names"].get(parts[0], parts[0]))
-            path_names.append(manager.config["language_names"].get(to_lang, to_lang))
-            translation_path = path_names
-        
-        # Translate all texts
-        translations = []
-        for text in texts:
-            translated = manager.translate(text, from_lang, to_lang)
-            translation_item = {
-                "original_text": text,
-                "translated_text": translated
-            }
-            translations.append(translation_item)
-        
-        # Build response
-        response = {
-            "translations": translations,
-            "from": from_lang,
-            "to": to_lang
-        }
-        
-        if translation_path:
-            response["translation_path"] = translation_path
-        
-        return jsonify(response)
-        
-    except Exception as e:
-        logger.error(f"Batch translation error: {str(e)}")
-        return jsonify({"error": f"Batch translation failed: {str(e)}"}), 500
 
 
 @app.route('/cache', methods=['DELETE'])

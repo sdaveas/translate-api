@@ -18,7 +18,6 @@ The system automatically handles direct translations where models are available,
 - ⚡ **Model Caching**: Loaded models are cached for faster subsequent translations
 - 🛠️ **Multiple Interfaces**: REST API, command-line tools, and Python library
 - 🚫 **Anti-Repetition**: Advanced generation parameters prevent repetitive output
-- 📦 **Batch Processing**: Translate multiple texts in a single request
 
 ## 🚀 Quick Start
 
@@ -93,8 +92,7 @@ curl -X POST http://localhost:8080/translate \
 | GET | `/` | API information |
 | GET | `/health` | Health check |
 | GET | `/languages` | Available languages and routes |
-| POST | `/translate` | Translate single text |
-| POST | `/translate/batch` | Translate multiple texts |
+| POST | `/translate` | Translate text |
 | DELETE | `/cache` | Clear model cache |
 
 📚 **For detailed API documentation with request/response examples, see [API_DOCUMENTATION.md](API_DOCUMENTATION.md)**
@@ -130,12 +128,6 @@ print(result)  # Output: 你好，世界
 result = manager.translate("你好朋友", "zh", "el")
 print(result)  # Output: Γεια σου, φίλε μου.
 
-# Batch translation
-texts = ["Good morning", "Thank you", "Goodbye"]
-results = manager.translate_batch(texts, "en", "zh")
-for original, translated in zip(texts, results):
-    print(f"{original} → {translated}")
-
 # Free memory when done
 manager.clear_cache()
 ```
@@ -159,18 +151,14 @@ response = requests.post(
 result = response.json()
 print(f"Translated: {result['translated_text']}")
 
-# Batch translation
-response = requests.post(
-    f"{API_URL}/translate/batch",
-    json={
-        "from": "en",
-        "to": "el",
-        "texts": ["Hello", "World", "Friend"]
-    }
-)
-results = response.json()
-for item in results['translations']:
-    print(f"{item['original_text']} → {item['translated_text']}")
+# Multiple translations (call translate multiple times)
+for text in ["Hello", "World", "Friend"]:
+    response = requests.post(
+        f"{API_URL}/translate",
+        json={"from": "en", "to": "el", "text": text}
+    )
+    result = response.json()
+    print(f"{text} → {result['translated_text']}")
 ```
 
 ## 🗺️ Translation Routes
