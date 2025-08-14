@@ -28,7 +28,7 @@ pip install transformers torch torchvision torchaudio sentencepiece sacremoses
 ## Files
 - `translation_config.json` - Configuration file defining translation routes
 - `translation_manager.py` - Main TranslationManager class
-- `translate_simple.py` - Command-line utility for quick translations
+- `translate.py` - Command-line utility for quick translations
 - `translate_example.py` - Interactive demo with examples
 - `test_translation.py` - Test script for verification
 
@@ -37,11 +37,11 @@ pip install transformers torch torchvision torchaudio sentencepiece sacremoses
 ### Simple Command Line
 ```bash
 # Direct translations
-pipenv run python translate_simple.py zh en "你好世界"
-pipenv run python translate_simple.py en el "Hello world"
+pipenv run python translate.py zh en "你好世界"
+pipenv run python translate.py en el "Hello world"
 
 # Chain translation (Chinese to Greek via English)
-pipenv run python translate_simple.py zh el "你好朋友"
+pipenv run python translate.py zh el "你好朋友"
 ```
 
 ### Python API

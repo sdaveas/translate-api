@@ -1,29 +1,51 @@
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
+#!/usr/bin/env python3
+"""
+Simple translation utility using the Translation Manager.
+Usage: python translate_simple.py [source_lang] [target_lang] "text to translate"
+"""
 
-# Option 1: Using pipeline (easier)
-print("Loading translation model...")
-translator = pipeline("translation", model="Helsinki-NLP/opus-mt-zh-en")
+import sys
+from translation_manager import TranslationManager
+import logging
 
-# Text to translate from Chinese to English
-text_to_translate = "你好，世界！今天天气很好。"
+# Reduce logging noise for simple usage
+logging.basicConfig(level=logging.WARNING)
 
-print(f"Original text (Chinese): {text_to_translate}")
+def main():
+    if len(sys.argv) < 4:
+        print("Usage: python translate_simple.py [source_lang] [target_lang] \"text to translate\"")
+        print("\nAvailable languages:")
+        print("  zh - Chinese")
+        print("  en - English")
+        print("  el - Greek")
+        print("\nExamples:")
+        print('  python translate_simple.py zh en "你好世界"')
+        print('  python translate_simple.py en el "Hello world"')
+        print('  python translate_simple.py zh el "你好世界"  # Chain translation via English')
+        sys.exit(1)
+    
+    source_lang = sys.argv[1].lower()
+    target_lang = sys.argv[2].lower()
+    text = sys.argv[3]
+    
+    # Validate languages
+    valid_langs = ['zh', 'en', 'el']
+    if source_lang not in valid_langs or target_lang not in valid_langs:
+        print(f"Error: Invalid language code. Use one of: {', '.join(valid_langs)}")
+        sys.exit(1)
+    
+    if source_lang == target_lang:
+        print("Error: Source and target languages are the same!")
+        sys.exit(1)
+    
+    # Initialize manager and translate
+    try:
+        manager = TranslationManager()
+        result = manager.translate(text, source_lang, target_lang)
+        print(result)
+    except Exception as e:
+        print(f"Translation failed: {e}", file=sys.stderr)
+        sys.exit(1)
 
-# Perform translation
-translation = translator(text_to_translate)
-print(f"Translated text (English): {translation[0]['translation_text']}")
-
-# Option 2: Using tokenizer and model directly (more control)
-print("\n--- Alternative method using tokenizer and model directly ---")
-tokenizer = AutoTokenizer.from_pretrained("Helsinki-NLP/opus-mt-zh-en")
-model = AutoModelForSeq2SeqLM.from_pretrained("Helsinki-NLP/opus-mt-zh-en")
-
-# Tokenize the input text
-inputs = tokenizer(text_to_translate, return_tensors="pt", padding=True)
-
-# Generate translation
-outputs = model.generate(**inputs)
-
-# Decode the output
-translated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
-print(f"Translated text (using direct method): {translated_text}")
+if __name__ == "__main__":
+    main()
