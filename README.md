@@ -28,24 +28,32 @@ pip install transformers torch torchvision torchaudio sentencepiece sacremoses
 ## Files
 - `translation_config.json` - Configuration file defining translation routes
 - `translation_manager.py` - Main TranslationManager class
-- `api.py` - FastAPI REST service for translation
+- `api.py` - Flask REST API service for translation
+- `index.html` - Web interface for the translation service
 - `translate.py` - Command-line utility for quick translations
 - `translate_example.py` - Interactive demo with examples
 - `test_translation.py` - Test script for verification
 - `client_example.py` - Example client for the REST API
 
-## API Service
+## Web Interface & API Service
 
 ### Starting the Service
 ```bash
-# Start the API server
-pipenv run uvicorn api:app --reload --port 8000
-
-# Or run directly
+# Start the Flask server
 pipenv run python api.py
 ```
 
-The API will be available at `http://localhost:8000`
+Then open your browser to:
+- Web Interface: `http://localhost:8000`
+- API Endpoints: `http://localhost:8000/api`
+
+### Web Interface Features
+- Clean, modern UI for easy translation
+- Language swap functionality
+- Character and word counting
+- Copy translation to clipboard
+- Shows translation path for chain translations
+- Keyboard shortcut: Ctrl/Cmd + Enter to translate
 
 ### API Endpoints
 

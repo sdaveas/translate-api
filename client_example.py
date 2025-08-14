@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Example client for the Translation API.
-Shows how to use the API from Python code.
+Shows how to use the Flask API from Python code.
 """
 
 import requests

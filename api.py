@@ -1,34 +1,21 @@
 """
-FastAPI service for the Translation API.
-Provides REST endpoints for translating text between Chinese, English, and Greek.
+Flask service for the Translation API.
+Simple REST API for translating text between Chinese, English, and Greek.
 """
 
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
-from typing import Optional, List
+from flask import Flask, request, jsonify, send_file
+from flask_cors import CORS
 import logging
+import os
 from translation_manager import TranslationManager
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Create FastAPI app
-app = FastAPI(
-    title="Translation API",
-    description="API for translating text between Chinese, English, and Greek",
-    version="1.0.0"
-)
-
-# Add CORS middleware to allow browser requests
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # In production, specify actual origins
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Create Flask app
+app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 
 # Initialize translation manager (singleton)
 translation_manager = None
@@ -42,269 +29,245 @@ def get_translation_manager():
     return translation_manager
 
 
-# Pydantic models for request/response
-class TranslationRequest(BaseModel):
-    """Request model for translation endpoint."""
-    from_lang: str = Field(..., alias="from", description="Source language code (zh, en, el)")
-    to_lang: str = Field(..., alias="to", description="Target language code (zh, en, el)")
-    text: str = Field(..., description="Text to translate")
-    
-    class Config:
-        populate_by_name = True
-        json_schema_extra = {
-            "example": {
-                "from": "zh",
-                "to": "el",
-                "text": "你好，世界！"
-            }
+@app.route('/')
+def index():
+    """Serve the HTML frontend if it exists, otherwise return API info."""
+    if os.path.exists('index.html'):
+        return send_file('index.html')
+    return jsonify({
+        "service": "Translation API",
+        "version": "1.0.0",
+        "endpoints": {
+            "/": "Web interface (if index.html exists) or this API info",
+            "/api": "API information",
+            "/health": "Health check",
+            "/languages": "Get available languages and routes",
+            "/translate": "Translate text (POST)",
+            "/translate/batch": "Translate multiple texts (POST)"
         }
+    })
 
 
-class TranslationResponse(BaseModel):
-    """Response model for translation endpoint."""
-    original_text: str = Field(..., description="Original text")
-    translated_text: str = Field(..., description="Translated text")
-    from_lang: str = Field(..., alias="from", description="Source language code")
-    to_lang: str = Field(..., alias="to", description="Target language code")
-    translation_path: Optional[List[str]] = Field(None, description="Translation path (for chain translations)")
-    
-    class Config:
-        populate_by_name = True
-
-
-class BatchTranslationRequest(BaseModel):
-    """Request model for batch translation endpoint."""
-    from_lang: str = Field(..., alias="from", description="Source language code (zh, en, el)")
-    to_lang: str = Field(..., alias="to", description="Target language code (zh, en, el)")
-    texts: List[str] = Field(..., description="List of texts to translate")
-    
-    class Config:
-        populate_by_name = True
-        json_schema_extra = {
-            "example": {
-                "from": "en",
-                "to": "zh",
-                "texts": ["Hello", "World", "How are you?"]
-            }
+@app.route('/api')
+def api_info():
+    """API information endpoint."""
+    return jsonify({
+        "service": "Translation API",
+        "version": "1.0.0",
+        "endpoints": {
+            "/": "Web interface",
+            "/api": "This API information",
+            "/health": "Health check",
+            "/languages": "Get available languages and routes",
+            "/translate": "Translate text (POST)",
+            "/translate/batch": "Translate multiple texts (POST)",
+            "/cache": "Clear model cache (DELETE)"
         }
+    })
 
 
-class BatchTranslationResponse(BaseModel):
-    """Response model for batch translation endpoint."""
-    translations: List[TranslationResponse] = Field(..., description="List of translation results")
-    from_lang: str = Field(..., alias="from", description="Source language code")
-    to_lang: str = Field(..., alias="to", description="Target language code")
-    
-    class Config:
-        populate_by_name = True
-
-
-class LanguageInfo(BaseModel):
-    """Information about available languages and routes."""
-    languages: dict = Field(..., description="Available languages with their codes")
-    routes: dict = Field(..., description="Available translation routes")
-
-
-class HealthResponse(BaseModel):
-    """Health check response."""
-    status: str = Field(..., description="Service status")
-    message: str = Field(..., description="Status message")
-
-
-# API Endpoints
-
-@app.get("/", response_model=HealthResponse)
-async def root():
-    """Root endpoint - returns service information."""
-    return HealthResponse(
-        status="ok",
-        message="Translation API is running. Visit /docs for API documentation."
-    )
-
-
-@app.get("/health", response_model=HealthResponse)
-async def health_check():
+@app.route('/health')
+def health():
     """Health check endpoint."""
-    return HealthResponse(status="ok", message="Service is healthy")
+    return jsonify({"status": "ok", "message": "Service is healthy"})
 
 
-@app.get("/languages", response_model=LanguageInfo)
-async def get_languages():
-    """Get information about available languages and translation routes."""
+@app.route('/languages')
+def languages():
+    """Get available languages and translation routes."""
     manager = get_translation_manager()
-    return LanguageInfo(
-        languages=manager.config.get("language_names", {}),
-        routes=manager.get_available_routes()
-    )
+    return jsonify({
+        "languages": manager.config.get("language_names", {}),
+        "routes": manager.get_available_routes()
+    })
 
 
-@app.post("/translate", response_model=TranslationResponse)
-async def translate(request: TranslationRequest):
+@app.route('/translate', methods=['POST'])
+def translate():
     """
     Translate text from one language to another.
     
-    Supports:
-    - Direct translation when models are available
-    - Chain translation through intermediate languages
-    
-    Language codes:
-    - zh: Chinese
-    - en: English  
-    - el: Greek
+    Expected JSON payload:
+    {
+        "from": "zh",  # Source language code
+        "to": "en",    # Target language code  
+        "text": "你好"  # Text to translate
+    }
     """
+    # Get JSON data
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No JSON data provided"}), 400
+    
+    # Validate required fields
+    from_lang = data.get('from')
+    to_lang = data.get('to')
+    text = data.get('text')
+    
+    if not from_lang:
+        return jsonify({"error": "Missing 'from' language"}), 400
+    if not to_lang:
+        return jsonify({"error": "Missing 'to' language"}), 400
+    if not text:
+        return jsonify({"error": "Missing 'text' to translate"}), 400
+    
     # Validate language codes
     valid_langs = ["zh", "en", "el"]
-    if request.from_lang not in valid_langs:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid source language: {request.from_lang}. Must be one of: {', '.join(valid_langs)}"
-        )
-    if request.to_lang not in valid_langs:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid target language: {request.to_lang}. Must be one of: {', '.join(valid_langs)}"
-        )
-    if request.from_lang == request.to_lang:
-        raise HTTPException(
-            status_code=400,
-            detail="Source and target languages cannot be the same"
-        )
+    if from_lang not in valid_langs:
+        return jsonify({
+            "error": f"Invalid source language: {from_lang}",
+            "valid_languages": valid_langs
+        }), 400
+    if to_lang not in valid_langs:
+        return jsonify({
+            "error": f"Invalid target language: {to_lang}",
+            "valid_languages": valid_langs
+        }), 400
+    if from_lang == to_lang:
+        return jsonify({"error": "Source and target languages are the same"}), 400
     
     try:
         manager = get_translation_manager()
         
-        # Get translation route to determine path
-        route = manager.get_translation_route(request.from_lang, request.to_lang)
+        # Check if route exists
+        route = manager.get_translation_route(from_lang, to_lang)
         if not route:
-            raise HTTPException(
-                status_code=400,
-                detail=f"No translation route available from {request.from_lang} to {request.to_lang}"
-            )
+            return jsonify({
+                "error": f"No translation route available from {from_lang} to {to_lang}"
+            }), 400
         
         # Perform translation
-        translated_text = manager.translate(
-            request.text,
-            request.from_lang,
-            request.to_lang
-        )
+        translated_text = manager.translate(text, from_lang, to_lang)
         
-        # Build translation path for response
-        translation_path = None
+        # Build response
+        response = {
+            "original_text": text,
+            "translated_text": translated_text,
+            "from": from_lang,
+            "to": to_lang
+        }
+        
+        # Add translation path for chain translations
         if len(route["path"]) > 1:
-            # Chain translation
             path_names = []
             for step in route["path"]:
                 parts = step.split("-")
                 path_names.append(manager.config["language_names"].get(parts[0], parts[0]))
-            path_names.append(manager.config["language_names"].get(request.to_lang, request.to_lang))
-            translation_path = path_names
+            path_names.append(manager.config["language_names"].get(to_lang, to_lang))
+            response["translation_path"] = path_names
         
-        return TranslationResponse(
-            original_text=request.text,
-            translated_text=translated_text,
-            from_lang=request.from_lang,
-            to_lang=request.to_lang,
-            translation_path=translation_path
-        )
+        return jsonify(response)
         
     except Exception as e:
         logger.error(f"Translation error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Translation failed: {str(e)}")
+        return jsonify({"error": f"Translation failed: {str(e)}"}), 500
 
 
-@app.post("/translate/batch", response_model=BatchTranslationResponse)
-async def translate_batch(request: BatchTranslationRequest):
+@app.route('/translate/batch', methods=['POST'])
+def translate_batch():
     """
     Translate multiple texts at once.
     
-    More efficient than calling /translate multiple times as models
-    are loaded once and reused for all translations.
+    Expected JSON payload:
+    {
+        "from": "en",
+        "to": "zh",
+        "texts": ["Hello", "World", "Friend"]
+    }
     """
+    # Get JSON data
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No JSON data provided"}), 400
+    
+    # Validate required fields
+    from_lang = data.get('from')
+    to_lang = data.get('to')
+    texts = data.get('texts')
+    
+    if not from_lang:
+        return jsonify({"error": "Missing 'from' language"}), 400
+    if not to_lang:
+        return jsonify({"error": "Missing 'to' language"}), 400
+    if not texts:
+        return jsonify({"error": "Missing 'texts' to translate"}), 400
+    if not isinstance(texts, list):
+        return jsonify({"error": "'texts' must be a list"}), 400
+    
     # Validate language codes
     valid_langs = ["zh", "en", "el"]
-    if request.from_lang not in valid_langs:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid source language: {request.from_lang}. Must be one of: {', '.join(valid_langs)}"
-        )
-    if request.to_lang not in valid_langs:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid target language: {request.to_lang}. Must be one of: {', '.join(valid_langs)}"
-        )
-    if request.from_lang == request.to_lang:
-        raise HTTPException(
-            status_code=400,
-            detail="Source and target languages cannot be the same"
-        )
+    if from_lang not in valid_langs:
+        return jsonify({
+            "error": f"Invalid source language: {from_lang}",
+            "valid_languages": valid_langs
+        }), 400
+    if to_lang not in valid_langs:
+        return jsonify({
+            "error": f"Invalid target language: {to_lang}",
+            "valid_languages": valid_langs
+        }), 400
+    if from_lang == to_lang:
+        return jsonify({"error": "Source and target languages are the same"}), 400
     
     try:
         manager = get_translation_manager()
         
-        # Get translation route
-        route = manager.get_translation_route(request.from_lang, request.to_lang)
+        # Check if route exists
+        route = manager.get_translation_route(from_lang, to_lang)
         if not route:
-            raise HTTPException(
-                status_code=400,
-                detail=f"No translation route available from {request.from_lang} to {request.to_lang}"
-            )
+            return jsonify({
+                "error": f"No translation route available from {from_lang} to {to_lang}"
+            }), 400
         
-        # Build translation path
+        # Build translation path if it's a chain translation
         translation_path = None
         if len(route["path"]) > 1:
             path_names = []
             for step in route["path"]:
                 parts = step.split("-")
                 path_names.append(manager.config["language_names"].get(parts[0], parts[0]))
-            path_names.append(manager.config["language_names"].get(request.to_lang, request.to_lang))
+            path_names.append(manager.config["language_names"].get(to_lang, to_lang))
             translation_path = path_names
         
         # Translate all texts
         translations = []
-        for text in request.texts:
-            translated = manager.translate(text, request.from_lang, request.to_lang)
-            translations.append(TranslationResponse(
-                original_text=text,
-                translated_text=translated,
-                from_lang=request.from_lang,
-                to_lang=request.to_lang,
-                translation_path=translation_path
-            ))
+        for text in texts:
+            translated = manager.translate(text, from_lang, to_lang)
+            translation_item = {
+                "original_text": text,
+                "translated_text": translated
+            }
+            translations.append(translation_item)
         
-        return BatchTranslationResponse(
-            translations=translations,
-            from_lang=request.from_lang,
-            to_lang=request.to_lang
-        )
+        # Build response
+        response = {
+            "translations": translations,
+            "from": from_lang,
+            "to": to_lang
+        }
+        
+        if translation_path:
+            response["translation_path"] = translation_path
+        
+        return jsonify(response)
         
     except Exception as e:
         logger.error(f"Batch translation error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Batch translation failed: {str(e)}")
+        return jsonify({"error": f"Batch translation failed: {str(e)}"}), 500
 
 
-@app.delete("/cache")
-async def clear_cache():
-    """
-    Clear the model cache to free memory.
-    
-    Useful when running low on memory or switching between many language pairs.
-    Next translation will be slower as models need to be reloaded.
-    """
+@app.route('/cache', methods=['DELETE'])
+def clear_cache():
+    """Clear the model cache to free memory."""
     try:
         manager = get_translation_manager()
         manager.clear_cache()
-        return {"status": "ok", "message": "Model cache cleared successfully"}
+        return jsonify({"status": "ok", "message": "Model cache cleared successfully"})
     except Exception as e:
         logger.error(f"Cache clear error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to clear cache: {str(e)}")
+        return jsonify({"error": f"Failed to clear cache: {str(e)}"}), 500
 
 
-if __name__ == "__main__":
-    import uvicorn
-    # Run the server
-    uvicorn.run(
-        app,
-        host="0.0.0.0",
-        port=8000,
-        log_level="info"
-    )
+if __name__ == '__main__':
+    # Run the Flask development server
+    app.run(host='0.0.0.0', port=8000, debug=True)

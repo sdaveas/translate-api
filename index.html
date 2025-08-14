@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Translation API - Chinese, English, Greek</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 100%;
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+        
+        .translation-area {
+            padding: 40px;
+        }
+        
+        .language-selector {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .language-group {
+            flex: 1;
+            min-width: 150px;
+        }
+        
+        .language-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+        
+        select {
+            width: 100%;
+            padding: 10px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+        
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .swap-button {
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 25px;
+            transition: transform 0.3s, background 0.3s;
+        }
+        
+        .swap-button:hover {
+            transform: rotate(180deg);
+            background: #764ba2;
+        }
+        
+        .swap-button svg {
+            width: 20px;
+            height: 20px;
+        }
+        
+        .text-areas {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        @media (max-width: 600px) {
+            .text-areas {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .text-group {
+            position: relative;
+        }
+        
+        .text-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+        
+        textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            resize: vertical;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .char-count {
+            position: absolute;
+            bottom: 10px;
+            right: 15px;
+            color: #999;
+            font-size: 12px;
+        }
+        
+        .translate-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .translate-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .translate-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+        }
+        
+        .loading.active {
+            display: block;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .error.active {
+            display: block;
+        }
+        
+        .translation-path {
+            background: #f0f4ff;
+            padding: 10px 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            color: #667eea;
+            font-size: 14px;
+            display: none;
+        }
+        
+        .translation-path.active {
+            display: block;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            padding: 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .stat {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        
+        .clear-button {
+            background: #f44336;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 10px;
+            transition: background 0.3s;
+        }
+        
+        .clear-button:hover {
+            background: #d32f2f;
+        }
+        
+        .copy-button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 10px;
+            transition: background 0.3s;
+        }
+        
+        .copy-button:hover {
+            background: #45a049;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌍 Translation Service</h1>
+            <p>Translate between Chinese, English, and Greek</p>
+        </div>
+        
+        <div class="translation-area">
+            <div class="language-selector">
+                <div class="language-group">
+                    <label for="from-lang">From:</label>
+                    <select id="from-lang">
+                        <option value="zh">Chinese (中文)</option>
+                        <option value="en" selected>English</option>
+                        <option value="el">Greek (Ελληνικά)</option>
+                    </select>
+                </div>
+                
+                <button class="swap-button" onclick="swapLanguages()" title="Swap languages">
+                    <svg fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z"/>
+                    </svg>
+                </button>
+                
+                <div class="language-group">
+                    <label for="to-lang">To:</label>
+                    <select id="to-lang">
+                        <option value="zh" selected>Chinese (中文)</option>
+                        <option value="en">English</option>
+                        <option value="el">Greek (Ελληνικά)</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="text-areas">
+                <div class="text-group">
+                    <label for="source-text">Original Text:</label>
+                    <textarea 
+                        id="source-text" 
+                        placeholder="Enter text to translate..."
+                        maxlength="5000"
+                    ></textarea>
+                    <span class="char-count" id="source-count">0 / 5000</span>
+                </div>
+                
+                <div class="text-group">
+                    <label for="target-text">Translation:</label>
+                    <textarea 
+                        id="target-text" 
+                        placeholder="Translation will appear here..."
+                        readonly
+                    ></textarea>
+                    <div class="button-group">
+                        <button class="copy-button" onclick="copyTranslation()" style="display: none;" id="copy-btn">
+                            📋 Copy
+                        </button>
+                        <button class="clear-button" onclick="clearAll()">
+                            Clear
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <button class="translate-button" onclick="translate()" id="translate-btn">
+                Translate
+            </button>
+            
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Translating... This may take a moment for the first translation.</p>
+            </div>
+            
+            <div class="error" id="error"></div>
+            
+            <div class="translation-path" id="path"></div>
+        </div>
+        
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-value" id="char-count-stat">0</div>
+                <div class="stat-label">Characters</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="word-count-stat">0</div>
+                <div class="stat-label">Words</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="translation-count">0</div>
+                <div class="stat-label">Translations</div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_URL = 'http://localhost:8000';
+        let translationCount = 0;
+        
+        // Update character count
+        document.getElementById('source-text').addEventListener('input', function() {
+            const count = this.value.length;
+            document.getElementById('source-count').textContent = `${count} / 5000`;
+            document.getElementById('char-count-stat').textContent = count;
+            
+            // Update word count
+            const words = this.value.trim().split(/\s+/).filter(word => word.length > 0).length;
+            document.getElementById('word-count-stat').textContent = words;
+        });
+        
+        function swapLanguages() {
+            const fromLang = document.getElementById('from-lang');
+            const toLang = document.getElementById('to-lang');
+            const sourceText = document.getElementById('source-text');
+            const targetText = document.getElementById('target-text');
+            
+            // Swap language selections
+            const temp = fromLang.value;
+            fromLang.value = toLang.value;
+            toLang.value = temp;
+            
+            // Swap text contents if there's a translation
+            if (targetText.value) {
+                const tempText = sourceText.value;
+                sourceText.value = targetText.value;
+                targetText.value = tempText;
+                
+                // Update counts
+                sourceText.dispatchEvent(new Event('input'));
+            }
+        }
+        
+        async function translate() {
+            const fromLang = document.getElementById('from-lang').value;
+            const toLang = document.getElementById('to-lang').value;
+            const sourceText = document.getElementById('source-text').value.trim();
+            
+            // Clear previous results
+            document.getElementById('error').classList.remove('active');
+            document.getElementById('path').classList.remove('active');
+            document.getElementById('copy-btn').style.display = 'none';
+            
+            // Validation
+            if (!sourceText) {
+                showError('Please enter text to translate');
+                return;
+            }
+            
+            if (fromLang === toLang) {
+                showError('Source and target languages are the same');
+                return;
+            }
+            
+            // Show loading
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('translate-btn').disabled = true;
+            
+            try {
+                const response = await fetch(`${API_URL}/translate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        from: fromLang,
+                        to: toLang,
+                        text: sourceText
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Translation failed');
+                }
+                
+                // Display translation
+                document.getElementById('target-text').value = data.translated_text;
+                document.getElementById('copy-btn').style.display = 'inline-block';
+                
+                // Show translation path if it was a chain translation
+                if (data.translation_path) {
+                    const pathElement = document.getElementById('path');
+                    pathElement.textContent = `Translation path: ${data.translation_path.join(' → ')}`;
+                    pathElement.classList.add('active');
+                }
+                
+                // Update translation count
+                translationCount++;
+                document.getElementById('translation-count').textContent = translationCount;
+                
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                document.getElementById('loading').classList.remove('active');
+                document.getElementById('translate-btn').disabled = false;
+            }
+        }
+        
+        function showError(message) {
+            const errorElement = document.getElementById('error');
+            errorElement.textContent = `Error: ${message}`;
+            errorElement.classList.add('active');
+        }
+        
+        function clearAll() {
+            document.getElementById('source-text').value = '';
+            document.getElementById('target-text').value = '';
+            document.getElementById('error').classList.remove('active');
+            document.getElementById('path').classList.remove('active');
+            document.getElementById('copy-btn').style.display = 'none';
+            document.getElementById('source-count').textContent = '0 / 5000';
+            document.getElementById('char-count-stat').textContent = '0';
+            document.getElementById('word-count-stat').textContent = '0';
+        }
+        
+        function copyTranslation() {
+            const targetText = document.getElementById('target-text');
+            targetText.select();
+            document.execCommand('copy');
+            
+            // Show feedback
+            const copyBtn = document.getElementById('copy-btn');
+            const originalText = copyBtn.textContent;
+            copyBtn.textContent = '✅ Copied!';
+            setTimeout(() => {
+                copyBtn.textContent = originalText;
+            }, 2000);
+        }
+        
+        // Allow Enter key to trigger translation (Ctrl/Cmd + Enter)
+        document.getElementById('source-text').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                translate();
+            }
+        });
+        
+        // Check API health on load
+        window.addEventListener('load', async function() {
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                if (!response.ok) {
+                    showError('API service is not available. Please make sure the server is running.');
+                }
+            } catch (error) {
+                showError('Cannot connect to API. Please start the server with: pipenv run python api.py');
+            }
+        });
+    </script>
+</body>
+</html>
