@@ -38,17 +38,16 @@ pip install transformers torch torchvision torchaudio sentencepiece sacremoses f
 ### Start the API Server
 
 ```bash
-# Start in foreground
+# Start the server
 pipenv run python api.py
-
-# Or start in background
-./start_server.sh
-
-# Stop background server
-./stop_server.sh
 ```
 
 The API will be available at `http://localhost:8080`
+
+**Note:** For production deployment, consider using a WSGI server like Gunicorn:
+```bash
+pipenv run gunicorn -w 4 -b 0.0.0.0:8080 api:app
+```
 
 ## 📁 Project Structure
 
@@ -61,9 +60,7 @@ translate-api/
 ├── translate.py             # CLI tool for quick translations
 ├── translate_example.py     # Interactive demo
 ├── test_translation.py      # Test suite
-├── client_example.py        # Example API client
-├── start_server.sh          # Start API server script
-└── stop_server.sh           # Stop API server script
+└── client_example.py        # Example API client
 ```
 
 ## 📡 API Reference
