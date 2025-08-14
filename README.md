@@ -29,49 +29,37 @@ pip install transformers torch torchvision torchaudio sentencepiece sacremoses
 - `translation_config.json` - Configuration file defining translation routes
 - `translation_manager.py` - Main TranslationManager class
 - `api.py` - Flask REST API service for translation
-- `index.html` - Web interface for the translation service
 - `translate.py` - Command-line utility for quick translations
 - `translate_example.py` - Interactive demo with examples
 - `test_translation.py` - Test script for verification
 - `client_example.py` - Example client for the REST API
 
-## Web Interface & API Service
+## API Service
 
 ### Starting the Service
 ```bash
 # Start the Flask server
 pipenv run python api.py
+
+# Or to run in background:
+./start_server.sh
 ```
 
-Then open your browser to:
-- Web Interface: `http://localhost:8000`
-- API Endpoints: `http://localhost:8000/api`
-
-### Web Interface Features
-- Clean, modern UI for easy translation
-- Language swap functionality
-- Character and word counting
-- Copy translation to clipboard
-- Shows translation path for chain translations
-- Keyboard shortcut: Ctrl/Cmd + Enter to translate
+The API will be available at: `http://localhost:8080`
 
 ### API Endpoints
 
-- `GET /` - Service information
+- `GET /` - API information
+- `GET /api` - API information (same as root)
 - `GET /health` - Health check
 - `GET /languages` - Get available languages and routes
 - `POST /translate` - Translate single text
 - `POST /translate/batch` - Translate multiple texts
 - `DELETE /cache` - Clear model cache
 
-### API Documentation
-When the service is running, visit:
-- Interactive docs: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
-
 ### Example API Request
 ```bash
-curl -X POST http://localhost:8000/translate \
+curl -X POST http://localhost:8080/translate \
   -H "Content-Type: application/json" \
   -d '{"from": "zh", "to": "el", "text": "你好世界"}'
 ```
@@ -85,6 +73,13 @@ Response:
   "to": "el",
   "translation_path": ["Chinese", "English", "Greek"]
 }
+```
+
+### Batch Translation Example
+```bash
+curl -X POST http://localhost:8080/translate/batch \
+  -H "Content-Type: application/json" \
+  -d '{"from": "en", "to": "zh", "texts": ["Hello", "World", "Friend"]}'
 ```
 
 ## Usage

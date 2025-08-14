@@ -3,10 +3,11 @@ Flask service for the Translation API.
 Simple REST API for translating text between Chinese, English, and Greek.
 """
 
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, make_response
 from flask_cors import CORS
 import logging
 import os
+import json
 from translation_manager import TranslationManager
 
 # Configure logging
@@ -32,32 +33,12 @@ def get_translation_manager():
 
 @app.route('/')
 def index():
-    """Serve the HTML frontend if it exists, otherwise return API info."""
-    if os.path.exists('index.html'):
-        return send_file('index.html')
+    """API root endpoint."""
     return jsonify({
         "service": "Translation API",
         "version": "1.0.0",
         "endpoints": {
-            "/": "Web interface (if index.html exists) or this API info",
-            "/api": "API information",
-            "/health": "Health check",
-            "/languages": "Get available languages and routes",
-            "/translate": "Translate text (POST)",
-            "/translate/batch": "Translate multiple texts (POST)"
-        }
-    })
-
-
-@app.route('/api')
-def api_info():
-    """API information endpoint."""
-    return jsonify({
-        "service": "Translation API",
-        "version": "1.0.0",
-        "endpoints": {
-            "/": "Web interface",
-            "/api": "This API information",
+            "/": "API information",
             "/health": "Health check",
             "/languages": "Get available languages and routes",
             "/translate": "Translate text (POST)",
@@ -65,6 +46,12 @@ def api_info():
             "/cache": "Clear model cache (DELETE)"
         }
     })
+
+
+@app.route('/api')
+def api_info():
+    """API information endpoint (same as root)."""
+    return index()
 
 
 @app.route('/health')
@@ -157,7 +144,10 @@ def translate():
             path_names.append(manager.config["language_names"].get(to_lang, to_lang))
             response["translation_path"] = path_names
         
-        return jsonify(response)
+        # Create response with proper UTF-8 encoding
+        resp = make_response(json.dumps(response, ensure_ascii=False, indent=2))
+        resp.headers['Content-Type'] = 'application/json; charset=utf-8'
+        return resp
         
     except Exception as e:
         logger.error(f"Translation error: {str(e)}")
@@ -270,5 +260,14 @@ def clear_cache():
 
 
 if __name__ == '__main__':
+    import sys
     # Run the Flask development server
-    app.run(host='0.0.0.0', port=8080, debug=True)
+    # Check if running in background (no tty) to avoid termios issues
+    is_background = not sys.stdin.isatty()
+    
+    if is_background:
+        # Running in background - disable debug mode to avoid interrupted system call
+        app.run(host='0.0.0.0', port=8080, debug=False, use_reloader=False)
+    else:
+        # Running in foreground - enable debug mode
+        app.run(host='0.0.0.0', port=8080, debug=True)
