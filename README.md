@@ -58,8 +58,6 @@ translate-api/
 ├── translation_config.json   # Routes and model configuration
 ├── API_DOCUMENTATION.md     # Detailed API documentation
 ├── translate.py             # CLI tool for quick translations
-├── translate_example.py     # Interactive demo
-├── test_translation.py      # Test suite
 └── client_example.py        # Example API client
 ```
 
