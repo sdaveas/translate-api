@@ -58,6 +58,7 @@ translate-api/
 ├── api.py                    # Flask REST API server
 ├── translation_manager.py    # Core translation logic
 ├── translation_config.json   # Routes and model configuration
+├── API_DOCUMENTATION.md     # Detailed API documentation
 ├── translate.py             # CLI tool for quick translations
 ├── translate_example.py     # Interactive demo
 ├── test_translation.py      # Test suite
@@ -68,7 +69,24 @@ translate-api/
 
 ## 📡 API Reference
 
-### Endpoints Overview
+### Quick Example
+
+```bash
+# Translate text from English to Chinese
+curl -X POST http://localhost:8080/translate \
+  -H "Content-Type: application/json" \
+  -d '{"from": "en", "to": "zh", "text": "Hello, world"}'
+
+# Response
+{
+  "original_text": "Hello, world",
+  "translated_text": "你好，世界",
+  "from": "en",
+  "to": "zh"
+}
+```
+
+### Available Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -79,191 +97,7 @@ translate-api/
 | POST | `/translate/batch` | Translate multiple texts |
 | DELETE | `/cache` | Clear model cache |
 
-### 🔍 Detailed Request & Response Examples
-
-#### 1. Get API Information
-
-**Request:**
-```bash
-curl http://localhost:8080/
-```
-
-**Response:**
-```json
-{
-  "service": "Translation API",
-  "version": "1.0.0",
-  "endpoints": {
-    "/": "API information",
-    "/health": "Health check",
-    "/languages": "Get available languages and routes",
-    "/translate": "Translate text (POST)",
-    "/translate/batch": "Translate multiple texts (POST)",
-    "/cache": "Clear model cache (DELETE)"
-  }
-}
-```
-
-#### 2. Health Check
-
-**Request:**
-```bash
-curl http://localhost:8080/health
-```
-
-**Response:**
-```json
-{
-  "status": "ok",
-  "message": "Service is healthy"
-}
-```
-
-#### 3. Get Available Languages
-
-**Request:**
-```bash
-curl http://localhost:8080/languages
-```
-
-**Response:**
-```json
-{
-  "languages": {
-    "zh": "Chinese",
-    "en": "English",
-    "el": "Greek"
-  },
-  "routes": {
-    "Chinese": ["English", "Greek"],
-    "English": ["Chinese", "Greek"],
-    "Greek": ["English", "Chinese"]
-  }
-}
-```
-
-#### 4. Translate Text (Single)
-
-**Direct Translation (English to Chinese):**
-```bash
-curl -X POST http://localhost:8080/translate \
-  -H "Content-Type: application/json" \
-  -d '{
-    "from": "en",
-    "to": "zh",
-    "text": "Hello, how are you today?"
-  }'
-```
-
-**Response:**
-```json
-{
-  "original_text": "Hello, how are you today?",
-  "translated_text": "哈罗,你今天好吗?",
-  "from": "en",
-  "to": "zh"
-}
-```
-
-**Chain Translation (Chinese to Greek via English):**
-```bash
-curl -X POST http://localhost:8080/translate \
-  -H "Content-Type: application/json" \
-  -d '{
-    "from": "zh",
-    "to": "el",
-    "text": "你好，朋友"
-  }'
-```
-
-**Response:**
-```json
-{
-  "original_text": "你好，朋友",
-  "translated_text": "Γεια σου, φίλε μου.",
-  "from": "zh",
-  "to": "el",
-  "translation_path": ["Chinese", "English", "Greek"]
-}
-```
-
-#### 5. Batch Translation
-
-**Request:**
-```bash
-curl -X POST http://localhost:8080/translate/batch \
-  -H "Content-Type: application/json" \
-  -d '{
-    "from": "en",
-    "to": "zh",
-    "texts": [
-      "Good morning",
-      "How are you?",
-      "Thank you very much"
-    ]
-  }'
-```
-
-**Response:**
-```json
-{
-  "translations": [
-    {
-      "original_text": "Good morning",
-      "translated_text": "早上好"
-    },
-    {
-      "original_text": "How are you?",
-      "translated_text": "你好吗?"
-    },
-    {
-      "original_text": "Thank you very much",
-      "translated_text": "非常感谢你"
-    }
-  ],
-  "from": "en",
-  "to": "zh"
-}
-```
-
-#### 6. Clear Model Cache
-
-**Request:**
-```bash
-curl -X DELETE http://localhost:8080/cache
-```
-
-**Response:**
-```json
-{
-  "status": "ok",
-  "message": "Model cache cleared successfully"
-}
-```
-
-### Error Responses
-
-**Missing Required Field:**
-```json
-{
-  "error": "Missing 'text' to translate"
-}
-```
-
-**Invalid Language Code:**
-```json
-{
-  "error": "Invalid source language: fr",
-  "valid_languages": ["zh", "en", "el"]
-}
-```
-
-**Same Source and Target Language:**
-```json
-{
-  "error": "Source and target languages are the same"
-}
-```
+📚 **For detailed API documentation with request/response examples, see [API_DOCUMENTATION.md](API_DOCUMENTATION.md)**
 
 ## 💻 Usage Examples
 
