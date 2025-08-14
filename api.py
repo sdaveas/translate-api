@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 # Create Flask app
 app = Flask(__name__)
+app.config['JSON_AS_ASCII'] = False  # Ensure proper UTF-8 encoding for non-ASCII characters
 CORS(app)  # Enable CORS for all routes
 
 # Initialize translation manager (singleton)
@@ -270,4 +271,4 @@ def clear_cache():
 
 if __name__ == '__main__':
     # Run the Flask development server
-    app.run(host='0.0.0.0', port=8000, debug=True)
+    app.run(host='0.0.0.0', port=8080, debug=True)
