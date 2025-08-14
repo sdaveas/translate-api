@@ -28,9 +28,56 @@ pip install transformers torch torchvision torchaudio sentencepiece sacremoses
 ## Files
 - `translation_config.json` - Configuration file defining translation routes
 - `translation_manager.py` - Main TranslationManager class
+- `api.py` - FastAPI REST service for translation
 - `translate.py` - Command-line utility for quick translations
 - `translate_example.py` - Interactive demo with examples
 - `test_translation.py` - Test script for verification
+- `client_example.py` - Example client for the REST API
+
+## API Service
+
+### Starting the Service
+```bash
+# Start the API server
+pipenv run uvicorn api:app --reload --port 8000
+
+# Or run directly
+pipenv run python api.py
+```
+
+The API will be available at `http://localhost:8000`
+
+### API Endpoints
+
+- `GET /` - Service information
+- `GET /health` - Health check
+- `GET /languages` - Get available languages and routes
+- `POST /translate` - Translate single text
+- `POST /translate/batch` - Translate multiple texts
+- `DELETE /cache` - Clear model cache
+
+### API Documentation
+When the service is running, visit:
+- Interactive docs: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
+
+### Example API Request
+```bash
+curl -X POST http://localhost:8000/translate \
+  -H "Content-Type: application/json" \
+  -d '{"from": "zh", "to": "el", "text": "你好世界"}'
+```
+
+Response:
+```json
+{
+  "original_text": "你好世界",
+  "translated_text": "Γεια σου κόσμε",
+  "from": "zh",
+  "to": "el",
+  "translation_path": ["Chinese", "English", "Greek"]
+}
+```
 
 ## Usage
 

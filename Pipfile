@@ -10,6 +10,11 @@ torchvision = "*"
 torchaudio = "*"
 sentencepiece = "*"
 sacremoses = "*"
+fastapi = "*"
+uvicorn = {extras = ["standard"], version = "*"}
+pydantic = "*"
+python-multipart = "*"
+requests = "*"
 
 [dev-packages]
 
