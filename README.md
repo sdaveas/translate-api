@@ -22,6 +22,18 @@ pipenv run python -m app.api
 python -m app.api
 ```
 
+
+## Running the FastAPI Frontend
+
+```sh
+pip install -r requirements.frontend.txt
+uvicorn fastapi_frontend.main:app --reload
+# or for production:
+gunicorn -w 2 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 fastapi_frontend.main:app
+```
+
+The frontend will be available at http://127.0.0.1:8000
+
 ## Production (with Gunicorn)
 
 API:
