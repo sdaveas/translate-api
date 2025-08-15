@@ -5,14 +5,18 @@ Simple REST API for translating text between Chinese, English, and Greek.
 
 from flask import Flask, request, jsonify, make_response
 from flask_cors import CORS
-import logging
 import os
+import sys
 import json
+
+# Add the app directory to the Python path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 from translation_manager import TranslationManager
+from logger import setup_logger
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = setup_logger('translation_api')
 
 # Create Flask app
 app = Flask(__name__)

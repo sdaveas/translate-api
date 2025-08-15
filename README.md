@@ -32,33 +32,52 @@ cd translate-api
 pipenv install
 
 # Or using pip
-pip install transformers torch torchvision torchaudio sentencepiece sacremoses flask flask-cors
+pip install -r requirements.txt
 ```
 
-### Start the API Server
+### Running the API
 
+#### Option 1: Using Python directly
 ```bash
-# Start the server
-pipenv run python api.py
+# Development mode
+pipenv run python app/api.py
+
+# Production mode with Gunicorn
+pipenv run gunicorn -w 4 -b 0.0.0.0:8080 --timeout 300 app.api:app
+```
+
+#### Option 2: Using Docker (Recommended)
+```bash
+# Build and run with docker-compose
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop the service
+docker-compose down
 ```
 
 The API will be available at `http://localhost:8080`
-
-**Note:** For production deployment, consider using a WSGI server like Gunicorn:
-```bash
-pipenv run gunicorn -w 4 -b 0.0.0.0:8080 api:app
-```
 
 ## 📁 Project Structure
 
 ```
 translate-api/
-├── api.py                    # Flask REST API server
-├── translation_manager.py    # Core translation logic
-├── translation_config.json   # Routes and model configuration
+├── app/                      # Application code
+│   ├── __init__.py
+│   ├── api.py                # Flask REST API server
+│   ├── translation_manager.py # Core translation logic
+│   ├── translation_config.json # Routes and model configuration
+│   ├── logger.py             # Logging configuration
+│   └── translate.py          # CLI tool for quick translations
+├── logs/                     # Application logs (auto-created)
 ├── API_DOCUMENTATION.md     # Detailed API documentation
-├── translate.py             # CLI tool for quick translations
-└── client_example.py        # Example API client
+├── Dockerfile                # Docker container definition
+├── docker-compose.yml        # Docker compose configuration
+├── requirements.txt          # Python dependencies
+├── Pipfile                   # Pipenv dependencies
+└── README.md                 # This file
 ```
 
 ## 📡 API Reference
@@ -98,13 +117,13 @@ curl -X POST http://localhost:8080/translate \
 
 ```bash
 # Simple translations
-pipenv run python translate.py en zh "Hello world"
-pipenv run python translate.py zh en "你好世界"
-pipenv run python translate.py en el "Good morning"
+pipenv run python app/translate.py en zh "Hello world"
+pipenv run python app/translate.py zh en "你好世界"
+pipenv run python app/translate.py en el "Good morning"
 
 # Chain translation (automatically routed through English)
-pipenv run python translate.py zh el "你好朋友"
-pipenv run python translate.py el zh "Καλημέρα"
+pipenv run python app/translate.py zh el "你好朋友"
+pipenv run python app/translate.py el zh "Καλημέρα"
 ```
 
 ### Python Library

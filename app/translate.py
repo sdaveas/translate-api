@@ -5,11 +5,17 @@ Usage: python translate_simple.py [source_lang] [target_lang] "text to translate
 """
 
 import sys
-from translation_manager import TranslationManager
-import logging
+import os
 
-# Reduce logging noise for simple usage
-logging.basicConfig(level=logging.WARNING)
+# Add the app directory to the Python path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from translation_manager import TranslationManager
+from logger import setup_logger
+
+# Set up logging (only warnings and above for CLI tool)
+logger = setup_logger('translate_cli')
+logger.setLevel('WARNING')
 
 def main():
     if len(sys.argv) < 4:

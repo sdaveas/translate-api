@@ -5,25 +5,33 @@ Supports direct and chain translations between Chinese, English, and Greek.
 
 import json
 import torch
+import os
+import sys
 from typing import Dict, List, Optional, Tuple
 from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
-import logging
+
+# Add the app directory to the Python path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from logger import setup_logger
 
 # Set up logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = setup_logger('translation_api')
 
 
 class TranslationManager:
     """Manages translation between multiple languages with configurable routing."""
     
-    def __init__(self, config_path: str = "translation_config.json"):
+    def __init__(self, config_path: str = None):
         """
         Initialize the TranslationManager with configuration.
         
         Args:
             config_path: Path to the JSON configuration file
         """
+        # Use default config path if not provided
+        if config_path is None:
+            config_path = os.path.join(os.path.dirname(__file__), "translation_config.json")
         self.config = self._load_config(config_path)
         self.pipelines = {}  # Cache for loaded translation pipelines
         self.models = {}  # Cache for loaded models
