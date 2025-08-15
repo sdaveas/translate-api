@@ -25,4 +25,4 @@ RUN mkdir -p logs
 EXPOSE 8080
 
 # Run the application with gunicorn
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:8080", "--timeout", "300", "app.api:app"]
+CMD ["gunicorn", "-w", "1", "-b", "0.0.0.0:8080", "--timeout", "300", "app.api:app"]
