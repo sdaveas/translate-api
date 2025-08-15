@@ -21,7 +21,8 @@ pipenv run python -m app.api
 # or
 python -m app.api
 ```
-
+## API Documentation
+see [API_USAGE.md](./API_USAGE.md)
 
 ## Running the FastAPI Frontend
 
