@@ -7,8 +7,13 @@ import json
 import torch
 import os
 import sys
+import warnings
 from typing import Dict, List, Optional, Tuple
 from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
+
+# Suppress the huggingface_hub FutureWarning about resume_download
+# This is a known issue that will be fixed in future library versions
+warnings.filterwarnings("ignore", message=".*resume_download.*", category=FutureWarning)
 
 # Add the app directory to the Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
