@@ -4,15 +4,11 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-transformers = "*"
-torch = "*"
-torchvision = "*"
-torchaudio = "*"
-sentencepiece = "*"
-sacremoses = "*"
 requests = "*"
 flask = "*"
 flask-cors = "*"
+googletrans = "*"
+gunicorn = "*"
 
 [dev-packages]
 

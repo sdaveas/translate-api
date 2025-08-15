@@ -1,19 +1,14 @@
+#!/usr/bin/env python3
 """
-Flask service for the Translation API.
-Simple REST API for translating text between Chinese, English, and Greek.
+Flask API service for Google Translate
+Provides REST endpoints for text translation and language information
 """
 
 from flask import Flask, request, jsonify, make_response
 from flask_cors import CORS
-import os
-import sys
 import json
-
-# Add the app directory to the Python path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-from translation_manager import TranslationManager
-from logger import setup_logger
+from app.translator import SimpleTranslator, LANGUAGES
+from app.logger import setup_logger
 
 # Configure logging
 logger = setup_logger('translation_api')
@@ -23,162 +18,212 @@ app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False  # Ensure proper UTF-8 encoding for non-ASCII characters
 CORS(app)  # Enable CORS for all routes
 
-# Initialize translation manager (singleton)
-translation_manager = None
+# Initialize translator (singleton)
+translator = None
 
-def get_translation_manager():
-    """Get or create the translation manager singleton."""
-    global translation_manager
-    if translation_manager is None:
-        logger.info("Initializing Translation Manager...")
-        translation_manager = TranslationManager()
-    return translation_manager
+def get_translator():
+    """Get or create the translator singleton."""
+    global translator
+    if translator is None:
+        logger.info("Initializing Google Translator...")
+        translator = SimpleTranslator()
+    return translator
 
 
 @app.route('/')
 def index():
-    """API root endpoint."""
+    """API root endpoint with service information."""
     return jsonify({
-        "service": "Translation API",
-        "version": "1.0.0",
+        "service": "Google Translate API",
+        "version": "2.0.0",
+        "description": "REST API for text translation using Google Translate",
         "endpoints": {
-            "/": "API information",
+            "/": "Service information",
             "/health": "Health check",
-            "/languages": "Get available languages and routes",
             "/translate": "Translate text (POST)",
-            "/cache": "Clear model cache (DELETE)"
+            "/languages": "Get available languages (GET)"
         }
     })
-
-
-@app.route('/api')
-def api_info():
-    """API information endpoint (same as root)."""
-    return index()
 
 
 @app.route('/health')
 def health():
     """Health check endpoint."""
-    return jsonify({"status": "ok", "message": "Service is healthy"})
-
-
-@app.route('/languages')
-def languages():
-    """Get available languages and translation routes."""
-    manager = get_translation_manager()
     return jsonify({
-        "languages": manager.config.get("language_names", {}),
-        "routes": manager.get_available_routes()
+        "status": "healthy",
+        "service": "translation-api"
     })
+
+
+@app.route('/languages', methods=['GET'])
+def get_languages():
+    """
+    Get list of available languages for translation.
+
+    Returns:
+        JSON object with language codes and names
+    """
+    try:
+        t = get_translator()
+        languages = t.get_supported_languages()
+
+        # Format the response
+        formatted_languages = [
+            {"code": code, "name": name}
+            for code, name in sorted(languages.items())
+        ]
+
+        return jsonify({
+            "languages": formatted_languages,
+            "total": len(formatted_languages)
+        })
+
+    except Exception as e:
+        logger.error(f"Error fetching languages: {str(e)}")
+        return jsonify({
+            "error": "Failed to fetch available languages",
+            "details": str(e)
+        }), 500
 
 
 @app.route('/translate', methods=['POST'])
 def translate():
     """
     Translate text from one language to another.
-    
+
     Expected JSON payload:
     {
-        "from": "zh",  # Source language code
-        "to": "en",    # Target language code  
-        "text": "你好"  # Text to translate
+        "text": "Text to translate",
+        "dest": "es",  # Destination language code (required)
+        "src": "auto",  # Source language code (optional, default: "auto")
+        "pronunciation": false  # Include pronunciation (optional, default: false)
     }
+
+    Returns:
+        JSON object with translated text and optional pronunciation
     """
-    # Get JSON data
-    data = request.get_json()
-    if not data:
-        return jsonify({"error": "No JSON data provided"}), 400
-    
-    # Validate required fields
-    from_lang = data.get('from')
-    to_lang = data.get('to')
-    text = data.get('text')
-    
-    if not from_lang:
-        return jsonify({"error": "Missing 'from' language"}), 400
-    if not to_lang:
-        return jsonify({"error": "Missing 'to' language"}), 400
-    if not text:
-        return jsonify({"error": "Missing 'text' to translate"}), 400
-    
-    # Validate language codes
-    valid_langs = ["zh", "en", "el"]
-    if from_lang not in valid_langs:
-        return jsonify({
-            "error": f"Invalid source language: {from_lang}",
-            "valid_languages": valid_langs
-        }), 400
-    if to_lang not in valid_langs:
-        return jsonify({
-            "error": f"Invalid target language: {to_lang}",
-            "valid_languages": valid_langs
-        }), 400
-    if from_lang == to_lang:
-        return jsonify({"error": "Source and target languages are the same"}), 400
-    
     try:
-        manager = get_translation_manager()
-        
-        # Check if route exists
-        route = manager.get_translation_route(from_lang, to_lang)
-        if not route:
+        # Get JSON data
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
+
+        # Extract and validate parameters
+        text = data.get('text')
+        dest = data.get('dest')
+        src = data.get('src', 'auto')
+        include_pronunciation = data.get('pronunciation', False)
+
+        # Validate required fields
+        if not text:
+            return jsonify({"error": "Missing 'text' field"}), 400
+        if not dest:
+            return jsonify({"error": "Missing 'dest' field"}), 400
+
+        # Validate language codes
+        if dest not in LANGUAGES and dest != 'auto':
             return jsonify({
-                "error": f"No translation route available from {from_lang} to {to_lang}"
+                "error": f"Invalid destination language code: {dest}",
+                "hint": "Use /languages endpoint to see available language codes"
             }), 400
-        
+
+        if src != 'auto' and src not in LANGUAGES:
+            return jsonify({
+                "error": f"Invalid source language code: {src}",
+                "hint": "Use /languages endpoint to see available language codes, or use 'auto' for automatic detection"
+            }), 400
+
         # Perform translation
-        translated_text = manager.translate(text, from_lang, to_lang)
-        
+        t = get_translator()
+        result = t.translate(text, dest=dest, src=src)
+
+        if not result:
+            return jsonify({
+                "error": "Translation failed",
+                "details": "Unable to translate the provided text"
+            }), 500
+
         # Build response
         response = {
             "original_text": text,
-            "translated_text": translated_text,
-            "from": from_lang,
-            "to": to_lang
+            "translated_text": result.text,
+            "source_language": result.src,
+            "destination_language": dest
         }
-        
-        # Add translation path for chain translations
-        if len(route["path"]) > 1:
-            path_names = []
-            for step in route["path"]:
-                parts = step.split("-")
-                path_names.append(manager.config["language_names"].get(parts[0], parts[0]))
-            path_names.append(manager.config["language_names"].get(to_lang, to_lang))
-            response["translation_path"] = path_names
-        
-        # Create response with proper UTF-8 encoding
-        resp = make_response(json.dumps(response, ensure_ascii=False, indent=2))
-        resp.headers['Content-Type'] = 'application/json; charset=utf-8'
-        return resp
-        
+
+        # Add pronunciation if requested and available
+        if include_pronunciation and result.pronunciation:
+            response["pronunciation"] = result.pronunciation
+
+        # Add detected language info if auto-detect was used
+        if src == 'auto':
+            response["detected_language"] = {
+                "code": result.src,
+                "name": LANGUAGES.get(result.src, "Unknown")
+            }
+
+        # Return response with proper UTF-8 encoding
+        return make_response(
+            json.dumps(response, ensure_ascii=False, indent=2),
+            200,
+            {'Content-Type': 'application/json; charset=utf-8'}
+        )
+
     except Exception as e:
         logger.error(f"Translation error: {str(e)}")
-        return jsonify({"error": f"Translation failed: {str(e)}"}), 500
+        return jsonify({
+            "error": "Translation failed",
+            "details": str(e)
+        }), 500
 
 
+@app.errorhandler(404)
+def not_found(error):
+    """Handle 404 errors."""
+    return jsonify({
+        "error": "Endpoint not found",
+        "message": "The requested endpoint does not exist",
+        "available_endpoints": {
+            "/": "Service information",
+            "/health": "Health check",
+            "/translate": "Translate text (POST)",
+            "/languages": "Get available languages (GET)"
+        }
+    }), 404
 
-@app.route('/cache', methods=['DELETE'])
-def clear_cache():
-    """Clear the model cache to free memory."""
-    try:
-        manager = get_translation_manager()
-        manager.clear_cache()
-        return jsonify({"status": "ok", "message": "Model cache cleared successfully"})
-    except Exception as e:
-        logger.error(f"Cache clear error: {str(e)}")
-        return jsonify({"error": f"Failed to clear cache: {str(e)}"}), 500
+
+@app.errorhandler(405)
+def method_not_allowed(error):
+    """Handle 405 errors."""
+    return jsonify({
+        "error": "Method not allowed",
+        "message": f"The {request.method} method is not allowed for this endpoint"
+    }), 405
+
+
+@app.errorhandler(500)
+def internal_error(error):
+    """Handle 500 errors."""
+    logger.error(f"Internal server error: {str(error)}")
+    return jsonify({
+        "error": "Internal server error",
+        "message": "An unexpected error occurred"
+    }), 500
 
 
 if __name__ == '__main__':
     import sys
-    # Run the Flask development server
-    # Check if running in background (no tty) to avoid termios issues
-    is_background = not sys.stdin.isatty()
-    
-    if is_background:
-        # Running in background - disable debug mode to avoid interrupted system call
-        app.run(host='0.0.0.0', port=8080, debug=False, use_reloader=False)
+    import os
+
+    # Get port from environment variable or use default
+    port = int(os.environ.get('PORT', 5000))
+
+    # Check if running in production or development
+    is_production = os.environ.get('FLASK_ENV') == 'production'
+
+    if is_production:
+        # Production settings
+        app.run(host='0.0.0.0', port=port, debug=False)
     else:
-        # Running in foreground - enable debug mode
-        app.run(host='0.0.0.0', port=8080, debug=True)
+        # Development settings
+        app.run(host='0.0.0.0', port=port, debug=True, use_reloader=True)
