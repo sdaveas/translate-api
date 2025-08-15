@@ -9,7 +9,6 @@ API_BASE = os.environ.get("API_BASE", "http://api:5001")
 
 app = FastAPI()
 templates = Jinja2Templates(directory="frontend/templates")
-app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
 
 @app.get("/", response_class=HTMLResponse)
 async def form_get(request: Request):
