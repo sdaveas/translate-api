@@ -4,4 +4,4 @@ COPY requirements.frontend.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 COPY frontend ./frontend
 EXPOSE 8001
-CMD ["uvicorn", "frontend.main:app", "--host", "0.0.0.0", "--port", "8001"]
+CMD ["gunicorn", "-w", "2", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:8001", "frontend.main:app"]
